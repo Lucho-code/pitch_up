@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Licit AR — Teleprompter de pitch</title>
+<style>
+  :root {
+    --bg: #131109;
+    --bg-elevated: #1c1811;
+    --bg-chip: #241f16;
+    --text: #f2ece0;
+    --text-dim: #a89d87;
+    --text-faint: #6e6553;
+    --accent: #d0713a;
+    --accent-soft: rgba(208, 113, 58, 0.16);
+    --accent-line: rgba(208, 113, 58, 0.55);
+    --good: #8faa7d;
+    --warn: #d9a441;
+    --rule: #322c22;
+    --focus: #e2b48a;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+    --font-script: "Iowan Old Style", "Palatino Linotype", Palatino, ui-serif, Georgia, serif;
+    --script-size: 34px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    overflow: hidden;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Header ---------- */
+
+  header {
+    flex: 0 0 auto;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 20px 12px;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .title-block {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .title-block h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .title-block .subtitle {
+    font-size: 12.5px;
+    color: var(--text-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .clock-block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .elapsed {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .clock-sep {
+    color: var(--text-faint);
+    font-size: 18px;
+  }
+
+  .target {
+    font-size: 15px;
+    color: var(--text-dim);
+  }
+
+  .pace-pill {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 100px;
+    background: var(--bg-chip);
+    color: var(--text-dim);
+    border: 1px solid var(--rule);
+  }
+  .pace-pill[data-pace="on"]   { color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, var(--rule)); }
+  .pace-pill[data-pace="ahead"]{ color: var(--focus); border-color: color-mix(in srgb, var(--focus) 45%, var(--rule)); }
+  .pace-pill[data-pace="behind"]{ color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--rule)); }
+
+  /* progress bar */
+  .progress-track {
+    margin-top: 12px;
+    height: 4px;
+    border-radius: 100px;
+    background: var(--rule);
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 100px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .progress-fill { transition: width 0.15s linear; }
+  }
+
+  /* section chips */
+  .sections {
+    margin-top: 12px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+  .sections::-webkit-scrollbar { height: 5px; }
+  .sections::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 100px; }
+
+  .chip {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    background: var(--bg-chip);
+    border: 1px solid var(--rule);
+    color: var(--text-dim);
+    font-size: 11.5px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+  }
+  .chip .chip-time {
+    font-variant-numeric: tabular-nums;
+    font-size: 10.5px;
+    color: var(--text-faint);
+    letter-spacing: 0.03em;
+  }
+  .chip[data-active="true"] {
+    background: var(--accent-soft);
+    border-color: var(--accent-line);
+    color: var(--text);
+  }
+  .chip[data-active="true"] .chip-time { color: var(--accent); }
+
+  /* ---------- Controls ---------- */
+
+  .controls {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--rule);
+    flex-wrap: wrap;
+  }
+
+  button.ctrl {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--bg-chip);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+  }
+  button.ctrl:hover { border-color: var(--text-faint); }
+  button.ctrl:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  button.ctrl[data-primary="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #1a1108;
+  }
+
+  .stepper {
+    display: inline-flex;
+    align-items: center;
+    background: var(--bg-chip);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .stepper button {
+    font-family: inherit;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 15px;
+    width: 30px;
+    height: 34px;
+    cursor: pointer;
+  }
+  .stepper button:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .stepper .stepper-label {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    padding: 0 8px;
+    min-width: 58px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .spacer { flex: 1 1 auto; }
+
+  .hint {
+    font-size: 11px;
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
+  .hint kbd {
+    font-family: inherit;
+    background: var(--bg-chip);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 10.5px;
+  }
+
+  /* ---------- Scroll stage ---------- */
+
+  .stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .stage.mirrored .scroll { transform: scaleX(-1); }
+
+  .read-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 30%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-line) 12%, var(--accent-line) 88%, transparent);
+    z-index: 3;
+    pointer-events: none;
+  }
+  .read-line::before {
+    content: "▶";
+    position: absolute;
+    left: 14px;
+    top: -9px;
+    color: var(--accent);
+    font-size: 12px;
+  }
+
+  .fade-top, .fade-bottom {
+    position: absolute;
+    left: 0; right: 0;
+    height: 14%;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .fade-top {
+    top: 0;
+    background: linear-gradient(to bottom, var(--bg) 0%, transparent 100%);
+  }
+  .fade-bottom {
+    bottom: 0;
+    background: linear-gradient(to top, var(--bg) 0%, transparent 100%);
+  }
+
+  .scroll {
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .scroll::-webkit-scrollbar { display: none; }
+
+  .script {
+    max-width: 46em;
+    margin: 0 auto;
+    padding: 42vh 32px 55vh;
+  }
+
+  .script section { margin-bottom: 46px; }
+
+  .eyebrow {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .eyebrow .eyebrow-time {
+    font-weight: 500;
+    color: var(--text-faint);
+    letter-spacing: 0.02em;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .eyebrow .eyebrow-sub {
+    color: var(--text-dim);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+
+  .line {
+    font-family: var(--font-script);
+    font-size: var(--script-size);
+    line-height: 1.5;
+    color: var(--text);
+    margin: 0 0 18px;
+    text-wrap: pretty;
+  }
+
+  .cue {
+    font-family: var(--font-ui);
+    font-size: calc(var(--script-size) * 0.42);
+    font-style: italic;
+    color: var(--text-dim);
+    background: var(--bg-elevated);
+    border-left: 3px solid var(--rule);
+    padding: 8px 14px;
+    border-radius: 0 6px 6px 0;
+    margin: 0 0 18px;
+  }
+
+  .note {
+    font-family: var(--font-ui);
+    font-size: calc(var(--script-size) * 0.4);
+    color: var(--text-faint);
+    margin: 0 0 18px;
+  }
+
+  .the-end {
+    text-align: center;
+    color: var(--text-faint);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+
+  @media (max-width: 640px) {
+    .clock-block { display: none; }
+    .hint { display: none; }
+    :root { --script-size: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="title-block">
+      <h1>Licit AR</h1>
+      <span class="subtitle">Videopitch · Concurso Soluciones Innovadoras BNA</span>
+    </div>
+    <div class="clock-block">
+      <span class="elapsed" id="elapsed">0:00</span>
+      <span class="clock-sep">/</span>
+      <span class="target">3:00</span>
+      <span class="pace-pill" id="pacePill" data-pace="on">Listo</span>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  <nav class="sections" id="sections"></nav>
+</header>
+
+<div class="controls">
+  <button class="ctrl" id="playBtn" data-primary="true">▶ Iniciar</button>
+  <button class="ctrl" id="resetBtn">↺ Reiniciar</button>
+
+  <div class="stepper" aria-label="Velocidad de scroll">
+    <button id="speedDown">–</button>
+    <span class="stepper-label" id="speedLabel">Vel. 100%</span>
+    <button id="speedUp">+</button>
+  </div>
+
+  <div class="stepper" aria-label="Tamaño de letra">
+    <button id="sizeDown">–</button>
+    <span class="stepper-label">Letra</span>
+    <button id="sizeUp">+</button>
+  </div>
+
+  <button class="ctrl" id="mirrorBtn">⇋ Espejo</button>
+  <button class="ctrl" id="fullscreenBtn">⛶ Pantalla completa</button>
+
+  <div class="spacer"></div>
+  <span class="hint"><kbd>Espacio</kbd> play/pausa · <kbd>↑↓</kbd> velocidad · <kbd>M</kbd> espejo · <kbd>F</kbd> pantalla completa</span>
+</div>
+
+<div class="stage" id="stage">
+  <div class="fade-top"></div>
+  <div class="read-line"></div>
+  <div class="fade-bottom"></div>
+  <div class="scroll" id="scroll">
+    <div class="script">
+
+      <section data-time="0" data-label="Apertura">
+        <div class="eyebrow">Apertura <span class="eyebrow-time">0:00</span><span class="eyebrow-sub">Autoconocimiento + audiencia</span></div>
+        <p class="cue">[Cámara, mirada directa, postura abierta, sin pantalla todavía]</p>
+        <p class="line">Soy arquitecto y desarrollador, y además tengo mi propia empresa de movimiento de suelos. Me presento a este concurso porque el problema que vengo a mostrarles lo viví yo mismo: nunca tuve una forma confiable de saber cuánto me costaba realmente mi trabajo a la hora de armar una oferta para una licitación pública.</p>
+        <p class="note">Nota vocal: bajá el ritmo en "lo viví yo mismo" — es el momento de conexión genuina con el jurado, no lo apures.</p>
+      </section>
+
+      <section data-time="20" data-label="Problema → Solución">
+        <div class="eyebrow">Desarrollo <span class="eyebrow-time">0:20</span><span class="eyebrow-sub">Problema → Solución</span></div>
+        <p class="cue">[Podés seguir en cámara o cortar a pantalla ya acá]</p>
+        <p class="line">Armar el precio de una oferta para una licitación de obra vial implica cruzar a mano más de veinte variables en una planilla de Excel: costos indirectos, seguros, inflación, costo financiero, impuestos. Un solo error de fórmula cambia el precio final, y una vez presentada la oferta ya no hay vuelta atrás.</p>
+        <p class="line">Por eso desarrollé Licit AR: una calculadora web que reemplaza esa planilla por una simulación en tiempo real. Cargás el costo directo de la obra y calcula al instante el coeficiente K bajo tres escenarios: Agresivo, Óptimo y Protegido.</p>
+      </section>
+
+      <section data-time="55" data-label="Mercado → Producto">
+        <div class="eyebrow">Desarrollo <span class="eyebrow-time">0:55</span><span class="eyebrow-sub">Mercado → Producto</span></div>
+        <p class="cue">[Pantalla compartida, demo breve y pausada]</p>
+        <p class="line">El mercado son las pymes constructoras y estudios de costos de toda la Argentina, que hoy quedan afuera de las herramientas de alta gama por precio y complejidad.</p>
+        <p class="line">Mirá el producto en acción: hago clic en cualquiera de los veinte rubros...</p>
+        <p class="cue">[clic, se abre el panel]</p>
+        <p class="line">...y se abre la fórmula exacta, el valor en pesos por escenario y la explicación del concepto. Todo auditable, nada de caja negra. También simula el acopio preventivo de materiales, como Hormigón H-30, y su efecto real en bajar el costo financiero. Al final, exporta todo a Excel con fórmulas vivas, listo para el pliego.</p>
+      </section>
+
+      <section data-time="95" data-label="Ventaja competitiva">
+        <div class="eyebrow">Desarrollo <span class="eyebrow-time">1:35</span><span class="eyebrow-sub">Ventaja competitiva → Competencia</span></div>
+        <p class="cue">[Volvé a cámara]</p>
+        <p class="line">Hoy esto se resuelve con planillas de Excel frágiles y difíciles de auditar, o con sistemas de gestión de obra pensados para administrar el contrato ya adjudicado, no para simular la oferta antes de presentarse. Licit AR ataca exactamente ese momento previo, donde hoy no hay una herramienta dedicada.</p>
+      </section>
+
+      <section data-time="115" data-label="Modelo de negocio">
+        <div class="eyebrow">Desarrollo <span class="eyebrow-time">1:55</span><span class="eyebrow-sub">Modelo de negocio → Clientes</span></div>
+        <p class="line">El modelo es una suscripción accesible para estudios de costos y constructoras — B2B, pensado para que una pyme lo pague sin que le rompa el presupuesto, algo que hoy no existe en este nicho.</p>
+      </section>
+
+      <section data-time="135" data-label="Equipo → Recorrido">
+        <div class="eyebrow">Desarrollo <span class="eyebrow-time">2:15</span><span class="eyebrow-sub">Equipo → Recorrido</span></div>
+        <p class="cue">[Cámara, tono más personal]</p>
+        <p class="line">Lo vengo desarrollando hace cinco meses, y no arrancó como un proyecto abstracto: arrancó porque yo mismo, con mi empresa de movimiento de suelos, necesitaba esta herramienta para mis propias ofertas. Cada función que tiene la app la probé primero conmigo, y después con un estudio de costos y una constructora local, que validaron los cálculos contra sus propias planillas con un 90% de coincidencia.</p>
+      </section>
+
+      <section data-time="155" data-label="Cierre">
+        <div class="eyebrow">Cierre <span class="eyebrow-time">2:35</span><span class="eyebrow-sub">Pedido + cierre entusiasta</span></div>
+        <p class="cue">[Cámara, energía arriba, mirada directa, no cortes a pantalla acá]</p>
+        <p class="line">Por eso le pido al jurado del BNA su apoyo con el premio en dinero: no para guardarlo, sino para escalar Licit AR, primero a nivel provincial y después a todo el país, llevando esta misma rigurosidad técnica a cada pyme constructora que hoy arma su oferta a ciegas. Gracias por su tiempo.</p>
+      </section>
+
+      <section data-time="180" data-label="Fin">
+        <p class="the-end">— fin del guion · 3:00 —</p>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var TOTAL = 180; // segundos totales del guion
+  var BASE_SPEED = 34; // px/seg a velocidad 100%
+
+  var scrollEl = document.getElementById('scroll');
+  var stageEl = document.getElementById('stage');
+  var playBtn = document.getElementById('playBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var elapsedEl = document.getElementById('elapsed');
+  var progressFill = document.getElementById('progressFill');
+  var pacePill = document.getElementById('pacePill');
+  var speedLabel = document.getElementById('speedLabel');
+  var sectionsNav = document.getElementById('sections');
+  var mirrorBtn = document.getElementById('mirrorBtn');
+  var fullscreenBtn = document.getElementById('fullscreenBtn');
+
+  var sections = Array.prototype.slice.call(document.querySelectorAll('.script section[data-time]'));
+
+  var playing = false;
+  var speedPct = 100;
+  var fontSize = 34;
+  var elapsedMs = 0;
+  var lastTick = null;
+  var rafId = null;
+
+  // Build section nav chips
+  sections.forEach(function (sec, i) {
+    if (i === sections.length - 1) return; // skip the "fin" marker
+    var t = parseInt(sec.getAttribute('data-time'), 10);
+    var chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.type = 'button';
+    chip.dataset.time = t;
+    chip.innerHTML = '<span class="chip-time">' + fmt(t) + '</span><span>' + sec.getAttribute('data-label') + '</span>';
+    chip.addEventListener('click', function () {
+      jumpTo(t);
+    });
+    sectionsNav.appendChild(chip);
+  });
+  var chips = Array.prototype.slice.call(sectionsNav.querySelectorAll('.chip'));
+
+  function fmt(totalSeconds) {
+    var s = Math.max(0, Math.round(totalSeconds));
+    var m = Math.floor(s / 60);
+    var r = s % 60;
+    return m + ':' + (r < 10 ? '0' : '') + r;
+  }
+
+  function jumpTo(seconds) {
+    elapsedMs = seconds * 1000;
+    var frac = seconds / TOTAL;
+    var maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+    scrollEl.scrollTop = Math.max(0, maxScroll * frac);
+    render();
+  }
+
+  function currentSectionIndexByTime(elapsedSec) {
+    var idx = 0;
+    for (var i = 0; i < sections.length; i++) {
+      var t = parseInt(sections[i].getAttribute('data-time'), 10);
+      if (t <= elapsedSec) idx = i;
+    }
+    return idx;
+  }
+
+  function currentSectionIndexByScroll() {
+    var lineY = stageEl.getBoundingClientRect().top + stageEl.clientHeight * 0.30;
+    var best = 0;
+    var bestDist = Infinity;
+    sections.forEach(function (sec, i) {
+      var r = sec.getBoundingClientRect();
+      if (r.top <= lineY) {
+        var dist = lineY - r.top;
+        if (dist < bestDist) { bestDist = dist; best = i; }
+      }
+    });
+    return best;
+  }
+
+  function render() {
+    var elapsedSec = elapsedMs / 1000;
+    elapsedEl.textContent = fmt(elapsedSec);
+    var pct = Math.min(100, (elapsedSec / TOTAL) * 100);
+    progressFill.style.width = pct + '%';
+
+    var byTime = currentSectionIndexByTime(elapsedSec);
+    var byScroll = currentSectionIndexByScroll();
+
+    chips.forEach(function (chip, i) {
+      chip.dataset.active = (i === byScroll) ? 'true' : 'false';
+    });
+
+    if (!playing && elapsedMs === 0) {
+      pacePill.textContent = 'Listo';
+      pacePill.dataset.pace = 'on';
+    } else if (byScroll === byTime) {
+      pacePill.textContent = 'En horario';
+      pacePill.dataset.pace = 'on';
+    } else if (byScroll > byTime) {
+      pacePill.textContent = 'Adelantado';
+      pacePill.dataset.pace = 'ahead';
+    } else {
+      pacePill.textContent = 'Atrasado';
+      pacePill.dataset.pace = 'behind';
+    }
+  }
+
+  function tick(ts) {
+    if (!playing) return;
+    if (lastTick === null) lastTick = ts;
+    var dt = ts - lastTick;
+    lastTick = ts;
+
+    elapsedMs += dt;
+    var pxPerSec = BASE_SPEED * (speedPct / 100);
+    scrollEl.scrollTop += pxPerSec * (dt / 1000);
+
+    render();
+
+    var maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+    if (scrollEl.scrollTop >= maxScroll - 2) {
+      pause();
+      return;
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function play() {
+    if (playing) return;
+    playing = true;
+    lastTick = null;
+    playBtn.textContent = '⏸ Pausar';
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function pause() {
+    playing = false;
+    playBtn.textContent = '▶ Continuar';
+    if (rafId) cancelAnimationFrame(rafId);
+  }
+
+  function reset() {
+    pause();
+    elapsedMs = 0;
+    scrollEl.scrollTop = 0;
+    playBtn.textContent = '▶ Iniciar';
+    render();
+  }
+
+  playBtn.addEventListener('click', function () {
+    if (playing) pause(); else play();
+  });
+  resetBtn.addEventListener('click', reset);
+
+  document.getElementById('speedUp').addEventListener('click', function () {
+    speedPct = Math.min(200, speedPct + 10);
+    speedLabel.textContent = 'Vel. ' + speedPct + '%';
+  });
+  document.getElementById('speedDown').addEventListener('click', function () {
+    speedPct = Math.max(30, speedPct - 10);
+    speedLabel.textContent = 'Vel. ' + speedPct + '%';
+  });
+
+  document.getElementById('sizeUp').addEventListener('click', function () {
+    fontSize = Math.min(52, fontSize + 2);
+    document.documentElement.style.setProperty('--script-size', fontSize + 'px');
+  });
+  document.getElementById('sizeDown').addEventListener('click', function () {
+    fontSize = Math.max(20, fontSize - 2);
+    document.documentElement.style.setProperty('--script-size', fontSize + 'px');
+  });
+
+  mirrorBtn.addEventListener('click', function () {
+    stageEl.classList.toggle('mirrored');
+  });
+
+  fullscreenBtn.addEventListener('click', function () {
+    try {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen();
+      }
+    } catch (e) { /* fullscreen not available in this context */ }
+  });
+
+  scrollEl.addEventListener('scroll', function () {
+    if (!playing) render();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (playing) pause(); else play();
+    } else if (e.code === 'ArrowUp') {
+      e.preventDefault();
+      document.getElementById('speedUp').click();
+    } else if (e.code === 'ArrowDown') {
+      e.preventDefault();
+      document.getElementById('speedDown').click();
+    } else if (e.key === 'm' || e.key === 'M') {
+      mirrorBtn.click();
+    } else if (e.key === 'f' || e.key === 'F') {
+      fullscreenBtn.click();
+    } else if (e.key === 'r' || e.key === 'R') {
+      reset();
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
