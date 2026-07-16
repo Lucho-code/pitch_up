@@ -1,20 +1,21 @@
 # Pitch Up 🎬
 
-Teleprompter web para grabar videopitches de concursos: scroll automático, control de velocidad, modo espejo, y un indicador de ritmo que compara tu avance real contra los tiempos objetivo de cada sección del guion.
+Teleprompter web para grabar videopitches: scroll automático, control de velocidad, modo espejo, y un indicador de ritmo que compara tu avance real contra los tiempos objetivo de cada sección del guion.
 
-Nació como herramienta para grabar el videopitch de [Licit AR](https://github.com/Lucho-code/Licit_AR) en el Concurso Soluciones Innovadoras BNA, con el guion de esa presentación ya cargado como ejemplo.
+Un solo archivo HTML, sin dependencias ni build — abrilo en el navegador y listo.
 
 ![Captura de Pitch Up](assets/screenshot.png)
 
 ## Características
 
 - **Scroll automático** del guion, con velocidad ajustable a tu ritmo de lectura.
-- **Auditoría por rubro visual**: acotaciones de cámara/pantalla diferenciadas del texto que se lee en voz alta.
+- **Acotaciones de cámara diferenciadas** del texto que se lee en voz alta.
 - **Indicador de ritmo** ("En horario" / "Adelantado" / "Atrasado") que compara tu posición real de scroll contra el tiempo transcurrido.
 - **Navegación por secciones**: chips arriba de la pantalla para saltar a cualquier bloque del guion y practicarlo por partes.
 - **Modo espejo**, para usar con un vidrio de teleprompter físico.
 - **Pantalla completa** para grabar sin distracciones.
-- Un solo archivo HTML, sin dependencias ni build: funciona abriéndolo directo en el navegador.
+
+El guion que trae por defecto es una **plantilla de ejemplo** (Apertura, Problema → Solución, Mercado → Producto, Ventaja competitiva, Modelo de negocio, Equipo → Recorrido, Cierre) con placeholders entre corchetes — pensada para reemplazar por tu propio contenido antes de grabar.
 
 ## Instalación y uso
 
@@ -44,12 +45,13 @@ python3 -m http.server 8000
 
 ## Cómo usarlo para grabar
 
-1. Ubicá la pantalla con Pitch Up justo al lado de (o superpuesta a) la cámara que va a grabar.
-2. Presioná **▶ Iniciar** para arrancar el scroll automático.
-3. Ajustá la **velocidad** (`–` / `+`, o `↑` `↓` del teclado) hasta encontrar tu ritmo natural de lectura.
-4. Mirá el **indicador de ritmo** arriba a la derecha: te avisa en vivo si vas en horario respecto al guion.
-5. Los bloques con fondo oscuro e itálica son **acotaciones de cámara** (ej. "[Cámara, mirada directa]") — no se leen en voz alta, son indicaciones de puesta en escena.
-6. Usá los **chips de sección** para practicar un bloque puntual sin tener que rebobinar todo el guion.
+1. Reemplazá el guion de ejemplo por el tuyo (ver sección siguiente).
+2. Ubicá la pantalla con Pitch Up justo al lado de (o superpuesta a) la cámara que va a grabar.
+3. Presioná **▶ Iniciar** para arrancar el scroll automático.
+4. Ajustá la **velocidad** (`–` / `+`, o `↑` `↓` del teclado) hasta encontrar tu ritmo natural de lectura.
+5. Mirá el **indicador de ritmo** arriba a la derecha: te avisa en vivo si vas en horario respecto al guion.
+6. Los bloques con fondo oscuro e itálica son **acotaciones de cámara** (ej. "[Cámara, mirada directa]") — no se leen en voz alta, son indicaciones de puesta en escena.
+7. Usá los **chips de sección** para practicar un bloque puntual sin tener que rebobinar todo el guion.
 
 ### Atajos de teclado
 
