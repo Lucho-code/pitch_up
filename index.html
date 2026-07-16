@@ -3,12 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#131109">
+<meta name="description" content="Teleprompter web con guion editable, scroll automático e indicador de ritmo para grabar videopitches.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 <title>Pitch Up — Teleprompter de pitch</title>
 <style>
   :root {
     --bg: #131109;
     --bg-elevated: #1c1811;
     --bg-chip: #241f16;
+    --bg-field: #18140d;
     --text: #f2ece0;
     --text-dim: #a89d87;
     --text-faint: #6e6553;
@@ -17,6 +23,7 @@
     --accent-line: rgba(208, 113, 58, 0.55);
     --good: #8faa7d;
     --warn: #d9a441;
+    --bad: #c96a5c;
     --rule: #322c22;
     --focus: #e2b48a;
     --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
@@ -39,6 +46,18 @@
   body {
     display: flex;
     flex-direction: column;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   /* ---------- Header ---------- */
@@ -114,6 +133,7 @@
     background: var(--bg-chip);
     color: var(--text-dim);
     border: 1px solid var(--rule);
+    cursor: help;
   }
   .pace-pill[data-pace="on"]   { color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, var(--rule)); }
   .pace-pill[data-pace="ahead"]{ color: var(--focus); border-color: color-mix(in srgb, var(--focus) 45%, var(--rule)); }
@@ -178,6 +198,12 @@
   }
   .chip[data-active="true"] .chip-time { color: var(--accent); }
 
+  .empty-hint {
+    font-size: 12.5px;
+    color: var(--text-faint);
+    padding: 6px 2px;
+  }
+
   /* ---------- Controls ---------- */
 
   .controls {
@@ -233,6 +259,7 @@
     cursor: pointer;
   }
   .stepper button:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .stepper button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
   .stepper .stepper-label {
     font-size: 11.5px;
     color: var(--text-dim);
@@ -384,6 +411,193 @@
     border-top: 1px solid var(--rule);
   }
 
+  /* ---------- Toast ---------- */
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+    background: var(--bg-elevated);
+    border: 1px solid var(--rule);
+    color: var(--text);
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    z-index: 50;
+    max-width: 90vw;
+  }
+  .toast[hidden] { display: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .toast { animation: toast-in 0.18s ease-out; }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+  }
+
+  /* ---------- Editor ---------- */
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 7, 4, 0.55);
+    z-index: 40;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .overlay[hidden] { display: none; }
+
+  .editor-panel {
+    width: min(560px, 100%);
+    height: 100%;
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .editor-panel { animation: panel-in 0.2s ease-out; }
+    @keyframes panel-in {
+      from { transform: translateX(24px); opacity: 0; }
+      to   { transform: translateX(0); opacity: 1; }
+    }
+  }
+
+  .editor-head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .editor-head h2 {
+    font-size: 16px;
+    margin: 0;
+  }
+  .editor-close {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--text-dim);
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .editor-close:hover { color: var(--text); border-color: var(--text-faint); }
+  .editor-close:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .editor-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 18px 20px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+  .field label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .field input, .field textarea {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg-field);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 9px 11px;
+    resize: vertical;
+  }
+  .field textarea { font-family: var(--font-script); line-height: 1.4; min-height: 88px; }
+  .field input:focus-visible, .field textarea:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1 1 auto; }
+  .field-hint { font-size: 11px; color: var(--text-faint); margin-top: -2px; }
+
+  .editor-total {
+    background: var(--bg-chip);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 18px;
+  }
+
+  .section-card {
+    background: var(--bg-chip);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .section-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .section-card-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .icon-btn {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--text-dim);
+    border-radius: 6px;
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+    cursor: pointer;
+    line-height: 1;
+    margin-left: 4px;
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--text-faint); }
+  .icon-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .icon-btn[data-danger="true"]:hover { color: var(--bad); border-color: var(--bad); }
+
+  .editor-foot {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--rule);
+    background: var(--bg-elevated);
+  }
+
+  .add-section-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--rule);
+    color: var(--text-dim);
+    border-radius: 10px;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .add-section-btn:hover { color: var(--text); border-color: var(--text-faint); }
+  .add-section-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
   @media (max-width: 640px) {
     .clock-block { display: none; }
     .hint { display: none; }
@@ -397,121 +611,177 @@
   <div class="header-top">
     <div class="title-block">
       <h1>Pitch Up</h1>
-      <span class="subtitle">Guion de ejemplo — reemplazá este texto por el tuyo</span>
+      <span class="subtitle">Guion editable — armá tu pitch y grabalo</span>
     </div>
     <div class="clock-block">
-      <span class="elapsed" id="elapsed">0:00</span>
-      <span class="clock-sep">/</span>
-      <span class="target">3:00</span>
-      <span class="pace-pill" id="pacePill" data-pace="on">Listo</span>
+      <span class="elapsed" id="elapsed" aria-hidden="true">0:00</span>
+      <span class="clock-sep" aria-hidden="true">/</span>
+      <span class="target" id="targetLabel" aria-hidden="true">3:00</span>
+      <span class="pace-pill" id="pacePill" data-pace="on" role="status" aria-live="polite" title="Compara en qué sección deberías estar según el tiempo transcurrido contra en qué sección estás según el scroll. Es una guía aproximada, no una medición exacta.">Listo</span>
     </div>
   </div>
   <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-  <nav class="sections" id="sections"></nav>
+  <nav class="sections" id="sections" aria-label="Secciones del guion"></nav>
 </header>
 
 <div class="controls">
   <button class="ctrl" id="playBtn" data-primary="true">▶ Iniciar</button>
   <button class="ctrl" id="resetBtn">↺ Reiniciar</button>
+  <button class="ctrl" id="editBtn">✎ Editar guion</button>
 
   <div class="stepper" aria-label="Velocidad de scroll">
-    <button id="speedDown">–</button>
+    <button id="speedDown" aria-label="Bajar velocidad">–</button>
     <span class="stepper-label" id="speedLabel">Vel. 100%</span>
-    <button id="speedUp">+</button>
+    <button id="speedUp" aria-label="Subir velocidad">+</button>
   </div>
 
   <div class="stepper" aria-label="Tamaño de letra">
-    <button id="sizeDown">–</button>
+    <button id="sizeDown" aria-label="Achicar letra">–</button>
     <span class="stepper-label">Letra</span>
-    <button id="sizeUp">+</button>
+    <button id="sizeUp" aria-label="Agrandar letra">+</button>
   </div>
 
   <button class="ctrl" id="mirrorBtn">⇋ Espejo</button>
   <button class="ctrl" id="fullscreenBtn">⛶ Pantalla completa</button>
 
   <div class="spacer"></div>
-  <span class="hint"><kbd>Espacio</kbd> play/pausa · <kbd>↑↓</kbd> velocidad · <kbd>M</kbd> espejo · <kbd>F</kbd> pantalla completa</span>
+  <span class="hint"><kbd>Espacio</kbd> play/pausa · <kbd>↑↓</kbd> velocidad · <kbd>M</kbd> espejo · <kbd>F</kbd> pantalla completa · <kbd>E</kbd> editar</span>
 </div>
 
 <div class="stage" id="stage">
-  <div class="fade-top"></div>
-  <div class="read-line"></div>
-  <div class="fade-bottom"></div>
+  <div class="fade-top" aria-hidden="true"></div>
+  <div class="read-line" aria-hidden="true"></div>
+  <div class="fade-bottom" aria-hidden="true"></div>
   <div class="scroll" id="scroll">
-    <div class="script">
+    <div class="script" id="script"></div>
+  </div>
+</div>
 
-      <section data-time="0" data-label="Apertura">
-        <div class="eyebrow">Apertura <span class="eyebrow-time">0:00</span><span class="eyebrow-sub">Presentación</span></div>
-        <p class="cue">[Cámara, mirada directa, postura abierta, sin pantalla todavía]</p>
-        <p class="line">Hola, soy [tu nombre] y vengo a presentarles [nombre de tu proyecto]. En los próximos minutos les voy a mostrar cuál es el problema que resolvemos, cómo lo resolvemos, y por qué vale la pena apostar por esta idea.</p>
-        <p class="note">Nota vocal: este es el momento de conexión con la audiencia — hablá despacio y mirá a cámara, no lo apures.</p>
-      </section>
-
-      <section data-time="20" data-label="Problema → Solución">
-        <div class="eyebrow">Desarrollo <span class="eyebrow-time">0:20</span><span class="eyebrow-sub">Problema → Solución</span></div>
-        <p class="cue">[Podés seguir en cámara o cortar a pantalla ya acá]</p>
-        <p class="line">Hoy, [describí quién sufre el problema] enfrenta [describí el problema concreto]. Esto genera [consecuencia del problema: tiempo perdido, errores, costos, etc.].</p>
-        <p class="line">Por eso desarrollamos [nombre del proyecto]: [explicá en una o dos frases qué hace tu solución y cómo resuelve ese problema].</p>
-      </section>
-
-      <section data-time="55" data-label="Mercado → Producto">
-        <div class="eyebrow">Desarrollo <span class="eyebrow-time">0:55</span><span class="eyebrow-sub">Mercado → Producto</span></div>
-        <p class="cue">[Pantalla compartida, demo breve y pausada]</p>
-        <p class="line">El mercado al que apuntamos es [describí tu mercado objetivo: quiénes son, cuántos son, dónde están].</p>
-        <p class="line">Mirá el producto en acción: [describí el primer paso de tu demo]...</p>
-        <p class="cue">[clic, mostrás la función clave]</p>
-        <p class="line">...y acá pasa [describí el resultado o el efecto que más impacta de tu producto]. Esto es lo que nos diferencia de hacerlo a mano o con herramientas genéricas.</p>
-      </section>
-
-      <section data-time="95" data-label="Ventaja competitiva">
-        <div class="eyebrow">Desarrollo <span class="eyebrow-time">1:35</span><span class="eyebrow-sub">Ventaja competitiva → Competencia</span></div>
-        <p class="cue">[Volvé a cámara]</p>
-        <p class="line">Hoy esto se resuelve con [cómo lo resuelve la competencia o el método actual], que tiene el problema de [su limitación principal]. Nosotros atacamos ese punto exacto, con [tu diferencial concreto].</p>
-      </section>
-
-      <section data-time="115" data-label="Modelo de negocio">
-        <div class="eyebrow">Desarrollo <span class="eyebrow-time">1:55</span><span class="eyebrow-sub">Modelo de negocio → Clientes</span></div>
-        <p class="line">El modelo de negocio es [cómo generás ingresos: suscripción, comisión, licencia, etc.], pensado para [tipo de cliente que paga].</p>
-      </section>
-
-      <section data-time="135" data-label="Equipo → Recorrido">
-        <div class="eyebrow">Desarrollo <span class="eyebrow-time">2:15</span><span class="eyebrow-sub">Equipo → Recorrido</span></div>
-        <p class="cue">[Cámara, tono más personal]</p>
-        <p class="line">Lo venimos desarrollando desde [hace cuánto tiempo], y arrancó porque [por qué empezaste este proyecto, qué te llevó a hacerlo]. [Contá brevemente algún hito de validación: usuarios, pruebas piloto, feedback recibido].</p>
-      </section>
-
-      <section data-time="155" data-label="Cierre">
-        <div class="eyebrow">Cierre <span class="eyebrow-time">2:35</span><span class="eyebrow-sub">Pedido + cierre entusiasta</span></div>
-        <p class="cue">[Cámara, energía arriba, mirada directa, no cortes a pantalla acá]</p>
-        <p class="line">Por eso les pido [tu pedido concreto: inversión, premio, mentoría, apoyo puntual], para poder [qué vas a lograr con eso: escalar, validar, crecer]. Gracias por su tiempo.</p>
-      </section>
-
-      <section data-time="180" data-label="Fin">
-        <p class="the-end">— fin del guion de ejemplo · reemplazá cada sección con tu contenido —</p>
-      </section>
-
+<!-- Editor de guion -->
+<div class="overlay" id="editorOverlay" hidden>
+  <div class="editor-panel" role="dialog" aria-modal="true" aria-labelledby="editorTitle" id="editorPanel">
+    <div class="editor-head">
+      <h2 id="editorTitle">Editar guion</h2>
+      <button class="editor-close" id="editorCloseBtn" aria-label="Cerrar editor">✕</button>
+    </div>
+    <div class="editor-body" id="editorBody">
+      <div class="editor-total">
+        <div class="field" style="margin-bottom:0;">
+          <label for="totalInput">Duración total del pitch (mm:ss)</label>
+          <input type="text" id="totalInput" inputmode="numeric" placeholder="3:00">
+          <span class="field-hint">Se usa para el indicador de ritmo y la columna de tiempo objetivo.</span>
+        </div>
+      </div>
+      <div id="sectionsEditor"></div>
+      <button class="add-section-btn" id="addSectionBtn" type="button">+ Agregar sección</button>
+    </div>
+    <div class="editor-foot">
+      <button class="ctrl" data-primary="true" id="saveScriptBtn">Guardar cambios</button>
+      <button class="ctrl" id="exportScriptBtn">⭳ Exportar</button>
+      <button class="ctrl" id="importScriptBtn">⭱ Importar</button>
+      <input type="file" id="importScriptInput" accept="application/json" class="sr-only" tabindex="-1">
+      <button class="ctrl" id="resetTemplateBtn">Restaurar plantilla</button>
     </div>
   </div>
 </div>
 
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
 <script>
 (function () {
-  var TOTAL = 180; // segundos totales del guion
+  var STORAGE_KEY = 'pitchup:script:v1';
   var BASE_SPEED = 34; // px/seg a velocidad 100%
+
+  var DEFAULT_DATA = {
+    total: 180,
+    sections: [
+      {
+        time: 0, label: 'Apertura', sub: 'Presentación',
+        blocks: [
+          { type: 'cue', text: '[Cámara, mirada directa, postura abierta, sin pantalla todavía]' },
+          { type: 'line', text: 'Hola, soy [tu nombre] y vengo a presentarles [nombre de tu proyecto]. En los próximos minutos les voy a mostrar cuál es el problema que resolvemos, cómo lo resolvemos, y por qué vale la pena apostar por esta idea.' },
+          { type: 'note', text: 'Nota vocal: este es el momento de conexión con la audiencia — hablá despacio y mirá a cámara, no lo apures.' }
+        ]
+      },
+      {
+        time: 20, label: 'Problema → Solución', sub: 'Problema → Solución',
+        blocks: [
+          { type: 'cue', text: '[Podés seguir en cámara o cortar a pantalla ya acá]' },
+          { type: 'line', text: 'Hoy, [describí quién sufre el problema] enfrenta [describí el problema concreto]. Esto genera [consecuencia del problema: tiempo perdido, errores, costos, etc.].' },
+          { type: 'line', text: 'Por eso desarrollamos [nombre del proyecto]: [explicá en una o dos frases qué hace tu solución y cómo resuelve ese problema].' }
+        ]
+      },
+      {
+        time: 55, label: 'Mercado → Producto', sub: 'Mercado → Producto',
+        blocks: [
+          { type: 'cue', text: '[Pantalla compartida, demo breve y pausada]' },
+          { type: 'line', text: 'El mercado al que apuntamos es [describí tu mercado objetivo: quiénes son, cuántos son, dónde están].' },
+          { type: 'line', text: 'Mirá el producto en acción: [describí el primer paso de tu demo]...' },
+          { type: 'cue', text: '[clic, mostrás la función clave]' },
+          { type: 'line', text: '...y acá pasa [describí el resultado o el efecto que más impacta de tu producto]. Esto es lo que nos diferencia de hacerlo a mano o con herramientas genéricas.' }
+        ]
+      },
+      {
+        time: 95, label: 'Ventaja competitiva', sub: 'Ventaja competitiva → Competencia',
+        blocks: [
+          { type: 'cue', text: '[Volvé a cámara]' },
+          { type: 'line', text: 'Hoy esto se resuelve con [cómo lo resuelve la competencia o el método actual], que tiene el problema de [su limitación principal]. Nosotros atacamos ese punto exacto, con [tu diferencial concreto].' }
+        ]
+      },
+      {
+        time: 115, label: 'Modelo de negocio', sub: 'Modelo de negocio → Clientes',
+        blocks: [
+          { type: 'line', text: 'El modelo de negocio es [cómo generás ingresos: suscripción, comisión, licencia, etc.], pensado para [tipo de cliente que paga].' }
+        ]
+      },
+      {
+        time: 135, label: 'Equipo → Recorrido', sub: 'Equipo → Recorrido',
+        blocks: [
+          { type: 'cue', text: '[Cámara, tono más personal]' },
+          { type: 'line', text: 'Lo venimos desarrollando desde [hace cuánto tiempo], y arrancó porque [por qué empezaste este proyecto, qué te llevó a hacerlo]. [Contá brevemente algún hito de validación: usuarios, pruebas piloto, feedback recibido].' }
+        ]
+      },
+      {
+        time: 155, label: 'Cierre', sub: 'Pedido + cierre entusiasta',
+        blocks: [
+          { type: 'cue', text: '[Cámara, energía arriba, mirada directa, no cortes a pantalla acá]' },
+          { type: 'line', text: 'Por eso les pido [tu pedido concreto: inversión, premio, mentoría, apoyo puntual], para poder [qué vas a lograr con eso: escalar, validar, crecer]. Gracias por su tiempo.' }
+        ]
+      }
+    ]
+  };
 
   var scrollEl = document.getElementById('scroll');
   var stageEl = document.getElementById('stage');
+  var scriptEl = document.getElementById('script');
   var playBtn = document.getElementById('playBtn');
   var resetBtn = document.getElementById('resetBtn');
+  var editBtn = document.getElementById('editBtn');
   var elapsedEl = document.getElementById('elapsed');
+  var targetLabel = document.getElementById('targetLabel');
   var progressFill = document.getElementById('progressFill');
   var pacePill = document.getElementById('pacePill');
   var speedLabel = document.getElementById('speedLabel');
   var sectionsNav = document.getElementById('sections');
   var mirrorBtn = document.getElementById('mirrorBtn');
   var fullscreenBtn = document.getElementById('fullscreenBtn');
+  var toastEl = document.getElementById('toast');
 
-  var sections = Array.prototype.slice.call(document.querySelectorAll('.script section[data-time]'));
+  var overlay = document.getElementById('editorOverlay');
+  var editorPanel = document.getElementById('editorPanel');
+  var editorCloseBtn = document.getElementById('editorCloseBtn');
+  var totalInput = document.getElementById('totalInput');
+  var sectionsEditor = document.getElementById('sectionsEditor');
+  var addSectionBtn = document.getElementById('addSectionBtn');
+  var saveScriptBtn = document.getElementById('saveScriptBtn');
+  var exportScriptBtn = document.getElementById('exportScriptBtn');
+  var importScriptBtn = document.getElementById('importScriptBtn');
+  var importScriptInput = document.getElementById('importScriptInput');
+  var resetTemplateBtn = document.getElementById('resetTemplateBtn');
+
+  var DATA = loadData();
+  var sections = []; // DOM section elements, kept in sync with DATA.sections
+  var chips = [];
 
   var playing = false;
   var speedPct = 100;
@@ -519,22 +789,30 @@
   var elapsedMs = 0;
   var lastTick = null;
   var rafId = null;
+  var toastTimer = null;
+  var lastFocusedBeforeEditor = null;
 
-  // Build section nav chips
-  sections.forEach(function (sec, i) {
-    if (i === sections.length - 1) return; // skip the "fin" marker
-    var t = parseInt(sec.getAttribute('data-time'), 10);
-    var chip = document.createElement('button');
-    chip.className = 'chip';
-    chip.type = 'button';
-    chip.dataset.time = t;
-    chip.innerHTML = '<span class="chip-time">' + fmt(t) + '</span><span>' + sec.getAttribute('data-label') + '</span>';
-    chip.addEventListener('click', function () {
-      jumpTo(t);
-    });
-    sectionsNav.appendChild(chip);
-  });
-  var chips = Array.prototype.slice.call(sectionsNav.querySelectorAll('.chip'));
+  // ---------- persistence ----------
+
+  function cloneData(d) { return JSON.parse(JSON.stringify(d)); }
+
+  function loadData() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return cloneData(DEFAULT_DATA);
+      var parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.sections)) return cloneData(DEFAULT_DATA);
+      return parsed;
+    } catch (e) {
+      return cloneData(DEFAULT_DATA);
+    }
+  }
+
+  function saveData() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); } catch (e) { /* storage unavailable */ }
+  }
+
+  // ---------- time helpers ----------
 
   function fmt(totalSeconds) {
     var s = Math.max(0, Math.round(totalSeconds));
@@ -543,9 +821,116 @@
     return m + ':' + (r < 10 ? '0' : '') + r;
   }
 
-  function jumpTo(seconds) {
-    elapsedMs = seconds * 1000;
-    var frac = seconds / TOTAL;
+  function parseTime(str) {
+    str = String(str == null ? '' : str).trim();
+    var m = str.match(/^(\d+):(\d{1,2})$/);
+    if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    var n = parseInt(str, 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  // ---------- blocks <-> textarea text ----------
+
+  function blocksToText(blocks) {
+    return (blocks || []).map(function (b) {
+      if (b.type === 'note') return '* ' + b.text;
+      return b.text;
+    }).join('\n\n');
+  }
+
+  function textToBlocks(text) {
+    return String(text || '').split(/\n\s*\n/).map(function (p) {
+      p = p.trim();
+      if (!p) return null;
+      if (p.charAt(0) === '[' && p.charAt(p.length - 1) === ']') return { type: 'cue', text: p };
+      if (p.charAt(0) === '*') return { type: 'note', text: p.replace(/^\*+\s*/, '') };
+      return { type: 'line', text: p };
+    }).filter(Boolean);
+  }
+
+  // ---------- toast ----------
+
+  function showToast(message) {
+    toastEl.textContent = message;
+    toastEl.hidden = false;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.hidden = true; }, 3200);
+  }
+
+  // ---------- render script from DATA ----------
+
+  function phaseLabel(index, count) {
+    if (count === 1) return 'Guion';
+    if (index === 0) return 'Apertura';
+    if (index === count - 1) return 'Cierre';
+    return 'Desarrollo';
+  }
+
+  function renderScript() {
+    scriptEl.innerHTML = '';
+    sectionsNav.innerHTML = '';
+
+    if (!DATA.sections.length) {
+      var hint = document.createElement('p');
+      hint.className = 'empty-hint';
+      hint.textContent = 'Todavía no hay secciones. Abrí "Editar guion" para agregar la primera.';
+      sectionsNav.appendChild(hint);
+    }
+
+    DATA.sections.forEach(function (sec, i) {
+      var section = document.createElement('section');
+      section.setAttribute('data-time', sec.time);
+      section.setAttribute('data-label', sec.label || '');
+
+      var eyebrow = document.createElement('div');
+      eyebrow.className = 'eyebrow';
+      eyebrow.innerHTML =
+        phaseLabel(i, DATA.sections.length) +
+        ' <span class="eyebrow-time">' + fmt(sec.time) + '</span>' +
+        (sec.sub ? '<span class="eyebrow-sub">' + escapeHtml(sec.sub) + '</span>' : '');
+      section.appendChild(eyebrow);
+
+      (sec.blocks || []).forEach(function (b) {
+        var p = document.createElement('p');
+        p.className = b.type === 'cue' ? 'cue' : (b.type === 'note' ? 'note' : 'line');
+        p.textContent = b.text;
+        section.appendChild(p);
+      });
+
+      scriptEl.appendChild(section);
+
+      var chip = document.createElement('button');
+      chip.className = 'chip';
+      chip.type = 'button';
+      chip.dataset.time = sec.time;
+      chip.innerHTML = '<span class="chip-time">' + fmt(sec.time) + '</span><span>' + escapeHtml(sec.label || ('Sección ' + (i + 1))) + '</span>';
+      chip.addEventListener('click', function () { jumpTo(sec.time); });
+      sectionsNav.appendChild(chip);
+    });
+
+    if (DATA.sections.length) {
+      var end = document.createElement('p');
+      end.className = 'the-end';
+      end.textContent = '— fin del guion · ' + fmt(DATA.total) + ' —';
+      scriptEl.appendChild(end);
+    }
+
+    sections = Array.prototype.slice.call(scriptEl.querySelectorAll('section[data-time]'));
+    chips = Array.prototype.slice.call(sectionsNav.querySelectorAll('.chip'));
+    targetLabel.textContent = fmt(DATA.total);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // ---------- playback ----------
+
+  function jumpTo(secondsTarget) {
+    elapsedMs = secondsTarget * 1000;
+    var frac = DATA.total > 0 ? secondsTarget / DATA.total : 0;
     var maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
     scrollEl.scrollTop = Math.max(0, maxScroll * frac);
     render();
@@ -577,8 +962,10 @@
   function render() {
     var elapsedSec = elapsedMs / 1000;
     elapsedEl.textContent = fmt(elapsedSec);
-    var pct = Math.min(100, (elapsedSec / TOTAL) * 100);
+    var pct = DATA.total > 0 ? Math.min(100, (elapsedSec / DATA.total) * 100) : 0;
     progressFill.style.width = pct + '%';
+
+    if (!sections.length) { pacePill.textContent = 'Sin guion'; pacePill.dataset.pace = 'on'; return; }
 
     var byTime = currentSectionIndexByTime(elapsedSec);
     var byScroll = currentSectionIndexByScroll();
@@ -623,7 +1010,7 @@
   }
 
   function play() {
-    if (playing) return;
+    if (playing || !sections.length) return;
     playing = true;
     lastTick = null;
     playBtn.textContent = '⏸ Pausar';
@@ -674,11 +1061,19 @@
   fullscreenBtn.addEventListener('click', function () {
     try {
       if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        document.documentElement.requestFullscreen();
+        var exitResult = document.exitFullscreen();
+        if (exitResult && exitResult.catch) exitResult.catch(function () { showToast('No se pudo salir de pantalla completa en este navegador.'); });
+        return;
       }
-    } catch (e) { /* fullscreen not available in this context */ }
+      var result = document.documentElement.requestFullscreen();
+      if (result && result.catch) {
+        result.catch(function () {
+          showToast('Tu navegador bloqueó pantalla completa. Probá abrir esta página en una pestaña normal.');
+        });
+      }
+    } catch (e) {
+      showToast('Pantalla completa no está disponible acá. Probá abrir esta página en una pestaña normal.');
+    }
   });
 
   scrollEl.addEventListener('scroll', function () {
@@ -686,6 +1081,13 @@
   });
 
   document.addEventListener('keydown', function (e) {
+    if (!overlay.hidden) {
+      if (e.key === 'Escape') closeEditor();
+      return;
+    }
+    var tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
     if (e.code === 'Space') {
       e.preventDefault();
       if (playing) pause(); else play();
@@ -701,10 +1103,207 @@
       fullscreenBtn.click();
     } else if (e.key === 'r' || e.key === 'R') {
       reset();
+    } else if (e.key === 'e' || e.key === 'E') {
+      openEditor();
     }
   });
 
+  // ---------- editor ----------
+
+  function buildSectionCard(sec, index) {
+    var card = document.createElement('div');
+    card.className = 'section-card';
+    card.dataset.index = index;
+
+    var head = document.createElement('div');
+    head.className = 'section-card-head';
+
+    var title = document.createElement('span');
+    title.className = 'section-card-title';
+    title.textContent = 'Sección ' + (index + 1);
+    head.appendChild(title);
+
+    var actions = document.createElement('div');
+    var upBtn = document.createElement('button');
+    upBtn.className = 'icon-btn'; upBtn.type = 'button'; upBtn.textContent = '↑'; upBtn.setAttribute('aria-label', 'Mover sección arriba');
+    upBtn.addEventListener('click', function () { moveSection(index, -1); });
+    var downBtn = document.createElement('button');
+    downBtn.className = 'icon-btn'; downBtn.type = 'button'; downBtn.textContent = '↓'; downBtn.setAttribute('aria-label', 'Mover sección abajo');
+    downBtn.addEventListener('click', function () { moveSection(index, 1); });
+    var delBtn = document.createElement('button');
+    delBtn.className = 'icon-btn'; delBtn.type = 'button'; delBtn.textContent = '✕'; delBtn.dataset.danger = 'true'; delBtn.setAttribute('aria-label', 'Eliminar sección');
+    delBtn.addEventListener('click', function () { deleteSection(index); });
+    actions.appendChild(upBtn); actions.appendChild(downBtn); actions.appendChild(delBtn);
+    head.appendChild(actions);
+
+    card.appendChild(head);
+
+    var row = document.createElement('div');
+    row.className = 'field-row';
+
+    var timeField = document.createElement('div');
+    timeField.className = 'field';
+    timeField.innerHTML = '<label>Tiempo (mm:ss)</label>';
+    var timeInput = document.createElement('input');
+    timeInput.type = 'text'; timeInput.value = fmt(sec.time); timeInput.inputMode = 'numeric';
+    timeInput.addEventListener('change', function () { DATA.sections[index].time = parseTime(timeInput.value); });
+    timeField.appendChild(timeInput);
+    row.appendChild(timeField);
+
+    var labelField = document.createElement('div');
+    labelField.className = 'field';
+    labelField.innerHTML = '<label>Etiqueta</label>';
+    var labelInput = document.createElement('input');
+    labelInput.type = 'text'; labelInput.value = sec.label || '';
+    labelInput.addEventListener('change', function () { DATA.sections[index].label = labelInput.value; });
+    labelField.appendChild(labelInput);
+    row.appendChild(labelField);
+
+    card.appendChild(row);
+
+    var subField = document.createElement('div');
+    subField.className = 'field';
+    subField.innerHTML = '<label>Subtítulo (opcional)</label>';
+    var subInput = document.createElement('input');
+    subInput.type = 'text'; subInput.value = sec.sub || '';
+    subInput.addEventListener('change', function () { DATA.sections[index].sub = subInput.value; });
+    subField.appendChild(subInput);
+    card.appendChild(subField);
+
+    var textField = document.createElement('div');
+    textField.className = 'field';
+    textField.innerHTML = '<label>Contenido</label>';
+    var textArea = document.createElement('textarea');
+    textArea.value = blocksToText(sec.blocks);
+    textArea.rows = 5;
+    textArea.addEventListener('change', function () { DATA.sections[index].blocks = textToBlocks(textArea.value); });
+    textField.appendChild(textArea);
+    var textHint = document.createElement('span');
+    textHint.className = 'field-hint';
+    textHint.textContent = 'Un párrafo por bloque, separados con línea en blanco. Entre [corchetes] = acotación de cámara. Empezá con * = nota para vos.';
+    textField.appendChild(textHint);
+    card.appendChild(textField);
+
+    return card;
+  }
+
+  function renderEditor() {
+    totalInput.value = fmt(DATA.total);
+    sectionsEditor.innerHTML = '';
+    DATA.sections.forEach(function (sec, i) {
+      sectionsEditor.appendChild(buildSectionCard(sec, i));
+    });
+  }
+
+  function moveSection(index, dir) {
+    var target = index + dir;
+    if (target < 0 || target >= DATA.sections.length) return;
+    var tmp = DATA.sections[index];
+    DATA.sections[index] = DATA.sections[target];
+    DATA.sections[target] = tmp;
+    renderEditor();
+  }
+
+  function deleteSection(index) {
+    DATA.sections.splice(index, 1);
+    renderEditor();
+  }
+
+  addSectionBtn.addEventListener('click', function () {
+    var lastTime = DATA.sections.length ? DATA.sections[DATA.sections.length - 1].time + 20 : 0;
+    DATA.sections.push({ time: lastTime, label: 'Nueva sección', sub: '', blocks: [{ type: 'line', text: 'Escribí acá lo que vas a decir.' }] });
+    renderEditor();
+    sectionsEditor.lastElementChild.scrollIntoView({ block: 'nearest' });
+  });
+
+  saveScriptBtn.addEventListener('click', function () {
+    DATA.total = parseTime(totalInput.value) || DATA.total;
+    saveData();
+    renderScript();
+    reset();
+    closeEditor();
+    showToast('Guion guardado.');
+  });
+
+  resetTemplateBtn.addEventListener('click', function () {
+    if (!window.confirm('Esto reemplaza el guion actual por la plantilla de ejemplo. ¿Continuar?')) return;
+    DATA = cloneData(DEFAULT_DATA);
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+    renderEditor();
+    renderScript();
+    reset();
+    showToast('Se restauró la plantilla de ejemplo.');
+  });
+
+  exportScriptBtn.addEventListener('click', function () {
+    DATA.total = parseTime(totalInput.value) || DATA.total;
+    var blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'pitch-up-guion.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  });
+
+  importScriptBtn.addEventListener('click', function () { importScriptInput.click(); });
+  importScriptInput.addEventListener('change', function () {
+    var file = importScriptInput.files && importScriptInput.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var parsed = JSON.parse(String(reader.result));
+        if (!parsed || !Array.isArray(parsed.sections)) throw new Error('formato inválido');
+        DATA = parsed;
+        renderEditor();
+        showToast('Guion importado. Revisá y guardá los cambios.');
+      } catch (e) {
+        showToast('No se pudo leer ese archivo como guion válido.');
+      }
+      importScriptInput.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  function openEditor() {
+    lastFocusedBeforeEditor = document.activeElement;
+    pause();
+    renderEditor();
+    overlay.hidden = false;
+    editorCloseBtn.focus();
+  }
+
+  function closeEditor() {
+    overlay.hidden = true;
+    if (lastFocusedBeforeEditor && lastFocusedBeforeEditor.focus) lastFocusedBeforeEditor.focus();
+  }
+
+  editBtn.addEventListener('click', openEditor);
+  editorCloseBtn.addEventListener('click', closeEditor);
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) closeEditor(); });
+
+  editorPanel.addEventListener('keydown', function (e) {
+    if (e.key !== 'Tab') return;
+    var focusable = editorPanel.querySelectorAll('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    var first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  // ---------- boot ----------
+
+  renderScript();
   render();
+
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* offline install not critical */ });
+    });
+  }
 })();
 </script>
 </body>
