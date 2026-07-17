@@ -54,7 +54,7 @@ python3 -m http.server 8000
 1. Presioná **✎ Editar guion** (o la tecla `E`) y reemplazá la plantilla de ejemplo por tu propio contenido: tocá **Duración total**, y en cada sección completá **Tiempo**, **Etiqueta**, **Subtítulo** y **Contenido**. Usá los botones **↑ ↓ ✕** para reordenar o borrar secciones, y **+ Agregar sección** para sumar nuevas. Guardá con **Guardar cambios**.
 2. Ubicá la pantalla con Pitch Up justo al lado de (o superpuesta a) la cámara que va a grabar.
 3. Presioná **▶ Iniciar** para arrancar el scroll automático.
-4. Ajustá la **velocidad** (`–` / `+`, o `↑` `↓` del teclado) hasta encontrar tu ritmo natural de lectura.
+4. Ajustá la **velocidad** con el slider (o `↑` `↓` del teclado) hasta encontrar tu ritmo natural de lectura.
 5. Mirá el **indicador de ritmo** arriba a la derecha: te avisa en vivo si vas en horario respecto al guion.
 6. Los bloques con fondo oscuro e itálica son **acotaciones de cámara** (ej. "[Cámara, mirada directa]") — no se leen en voz alta, son indicaciones de puesta en escena.
 7. Usá los **chips de sección** para practicar un bloque puntual sin tener que rebobinar todo el guion.

@@ -269,6 +269,36 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .speed-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    height: 34px;
+    background: var(--bg-chip);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 0 12px;
+  }
+  .speed-control-label {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .speed-control input[type="range"] {
+    width: 130px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .speed-control input[type="range"]:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+  .speed-control .stepper-label {
+    padding: 0;
+    min-width: 34px;
+    text-align: right;
+  }
+
   .spacer { flex: 1 1 auto; }
 
   .hint {
@@ -629,10 +659,11 @@
   <button class="ctrl" id="resetBtn">↺ Reiniciar</button>
   <button class="ctrl" id="editBtn">✎ Editar guion</button>
 
-  <div class="stepper" aria-label="Velocidad de scroll">
-    <button id="speedDown" aria-label="Bajar velocidad">–</button>
-    <span class="stepper-label" id="speedLabel">Vel. 100%</span>
-    <button id="speedUp" aria-label="Subir velocidad">+</button>
+  <div class="speed-control">
+    <span class="speed-control-label" id="speedControlLabel">Vel.</span>
+    <input type="range" id="speedSlider" min="30" max="200" step="5" value="100"
+           aria-labelledby="speedControlLabel" aria-valuetext="100%">
+    <span class="stepper-label" id="speedLabel">100%</span>
   </div>
 
   <div class="stepper" aria-label="Tamaño de letra">
@@ -762,6 +793,7 @@
   var progressFill = document.getElementById('progressFill');
   var pacePill = document.getElementById('pacePill');
   var speedLabel = document.getElementById('speedLabel');
+  var speedSlider = document.getElementById('speedSlider');
   var sectionsNav = document.getElementById('sections');
   var mirrorBtn = document.getElementById('mirrorBtn');
   var fullscreenBtn = document.getElementById('fullscreenBtn');
@@ -1036,13 +1068,15 @@
   });
   resetBtn.addEventListener('click', reset);
 
-  document.getElementById('speedUp').addEventListener('click', function () {
-    speedPct = Math.min(200, speedPct + 10);
-    speedLabel.textContent = 'Vel. ' + speedPct + '%';
-  });
-  document.getElementById('speedDown').addEventListener('click', function () {
-    speedPct = Math.max(30, speedPct - 10);
-    speedLabel.textContent = 'Vel. ' + speedPct + '%';
+  function setSpeed(pct) {
+    pct = Math.max(30, Math.min(200, Math.round(pct / 5) * 5));
+    speedPct = pct;
+    speedSlider.value = pct;
+    speedLabel.textContent = pct + '%';
+    speedSlider.setAttribute('aria-valuetext', pct + '%');
+  }
+  speedSlider.addEventListener('input', function () {
+    setSpeed(parseInt(speedSlider.value, 10));
   });
 
   document.getElementById('sizeUp').addEventListener('click', function () {
@@ -1093,10 +1127,10 @@
       if (playing) pause(); else play();
     } else if (e.code === 'ArrowUp') {
       e.preventDefault();
-      document.getElementById('speedUp').click();
+      setSpeed(speedPct + 5);
     } else if (e.code === 'ArrowDown') {
       e.preventDefault();
-      document.getElementById('speedDown').click();
+      setSpeed(speedPct - 5);
     } else if (e.key === 'm' || e.key === 'M') {
       mirrorBtn.click();
     } else if (e.key === 'f' || e.key === 'F') {
