@@ -293,10 +293,26 @@
     outline: 2px solid var(--focus);
     outline-offset: 3px;
   }
-  .speed-control .stepper-label {
-    padding: 0;
-    min-width: 34px;
+  .speed-control input[type="number"] {
+    width: 34px;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
     text-align: right;
+    padding: 0;
+    -moz-appearance: textfield;
+  }
+  .speed-control input[type="number"]:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .speed-control .speed-unit {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    margin-left: -6px;
   }
 
   .spacer { flex: 1 1 auto; }
@@ -661,9 +677,11 @@
 
   <div class="speed-control">
     <span class="speed-control-label" id="speedControlLabel">Vel.</span>
-    <input type="range" id="speedSlider" min="30" max="200" step="5" value="100"
+    <input type="range" id="speedSlider" min="30" max="200" step="1" value="100"
            aria-labelledby="speedControlLabel" aria-valuetext="100%">
-    <span class="stepper-label" id="speedLabel">100%</span>
+    <input type="number" id="speedNumber" min="30" max="200" step="1" value="100"
+           aria-label="Velocidad exacta en porcentaje">
+    <span class="speed-unit" aria-hidden="true">%</span>
   </div>
 
   <div class="stepper" aria-label="Tamaño de letra">
@@ -792,8 +810,8 @@
   var targetLabel = document.getElementById('targetLabel');
   var progressFill = document.getElementById('progressFill');
   var pacePill = document.getElementById('pacePill');
-  var speedLabel = document.getElementById('speedLabel');
   var speedSlider = document.getElementById('speedSlider');
+  var speedNumber = document.getElementById('speedNumber');
   var sectionsNav = document.getElementById('sections');
   var mirrorBtn = document.getElementById('mirrorBtn');
   var fullscreenBtn = document.getElementById('fullscreenBtn');
@@ -822,6 +840,8 @@
   var lastTick = null;
   var rafId = null;
   var toastTimer = null;
+  var scrollPos = 0; // full-precision scroll position; scrollTop itself rounds to whole pixels,
+                      // so fractional per-frame increments at low speeds would otherwise be lost every frame
   var lastFocusedBeforeEditor = null;
 
   // ---------- persistence ----------
@@ -964,7 +984,8 @@
     elapsedMs = secondsTarget * 1000;
     var frac = DATA.total > 0 ? secondsTarget / DATA.total : 0;
     var maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
-    scrollEl.scrollTop = Math.max(0, maxScroll * frac);
+    scrollPos = Math.max(0, maxScroll * frac);
+    scrollEl.scrollTop = scrollPos;
     render();
   }
 
@@ -1029,12 +1050,13 @@
 
     elapsedMs += dt;
     var pxPerSec = BASE_SPEED * (speedPct / 100);
-    scrollEl.scrollTop += pxPerSec * (dt / 1000);
+    scrollPos += pxPerSec * (dt / 1000);
+    scrollEl.scrollTop = scrollPos;
 
     render();
 
     var maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
-    if (scrollEl.scrollTop >= maxScroll - 2) {
+    if (scrollPos >= maxScroll - 2) {
       pause();
       return;
     }
@@ -1045,6 +1067,7 @@
     if (playing || !sections.length) return;
     playing = true;
     lastTick = null;
+    scrollPos = scrollEl.scrollTop;
     playBtn.textContent = '⏸ Pausar';
     rafId = requestAnimationFrame(tick);
   }
@@ -1058,6 +1081,7 @@
   function reset() {
     pause();
     elapsedMs = 0;
+    scrollPos = 0;
     scrollEl.scrollTop = 0;
     playBtn.textContent = '▶ Iniciar';
     render();
@@ -1069,14 +1093,21 @@
   resetBtn.addEventListener('click', reset);
 
   function setSpeed(pct) {
-    pct = Math.max(30, Math.min(200, Math.round(pct / 5) * 5));
+    if (isNaN(pct)) return;
+    pct = Math.max(30, Math.min(200, Math.round(pct)));
     speedPct = pct;
     speedSlider.value = pct;
-    speedLabel.textContent = pct + '%';
+    speedNumber.value = pct;
     speedSlider.setAttribute('aria-valuetext', pct + '%');
   }
   speedSlider.addEventListener('input', function () {
     setSpeed(parseInt(speedSlider.value, 10));
+  });
+  speedNumber.addEventListener('change', function () {
+    setSpeed(parseInt(speedNumber.value, 10));
+  });
+  speedNumber.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') speedNumber.blur();
   });
 
   document.getElementById('sizeUp').addEventListener('click', function () {
@@ -1111,7 +1142,10 @@
   });
 
   scrollEl.addEventListener('scroll', function () {
-    if (!playing) render();
+    if (!playing) {
+      scrollPos = scrollEl.scrollTop;
+      render();
+    }
   });
 
   document.addEventListener('keydown', function (e) {
