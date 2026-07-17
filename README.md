@@ -12,6 +12,7 @@ Un solo archivo HTML, sin dependencias ni build — abrilo en el navegador y lis
 - **Scroll automático** del guion, con velocidad ajustable a tu ritmo de lectura.
 - **Acotaciones de cámara diferenciadas** del texto que se lee en voz alta.
 - **Indicador de ritmo** ("En horario" / "Adelantado" / "Atrasado") que compara tu posición real de scroll contra el tiempo transcurrido. Es una guía orientativa, no una medición exacta — pasá el cursor sobre la etiqueta para ver la aclaración.
+- **Adjuntar un guion ya escrito** en `.md`, `.txt` o `.json` en vez de tipearlo a mano: la app lo separa en secciones automáticamente.
 - **Importar / exportar** el guion como JSON, para tener respaldo o compartirlo entre dispositivos.
 - **Instalable como app (PWA)**: funciona offline una vez cargada una primera vez.
 - **Modo espejo**, para usar con un vidrio de teleprompter físico.
@@ -79,9 +80,28 @@ En el campo **Contenido** del editor, escribí un párrafo por bloque, separados
 | `R` | Reiniciar |
 | `Esc` | Cerrar editor |
 
+## Adjuntar un guion ya escrito (.md / .txt / .json)
+
+Si ya tenés el guion redactado en otro lado (Word, Google Docs exportado a texto, notas, etc.), no hace falta cargarlo sección por sección: guardalo como `.md` o `.txt` y subilo con **⭱ Adjuntar guion** en el editor.
+
+- Si el documento tiene encabezados (`#`, `##` o `###`), cada encabezado arranca una sección nueva. El texto del encabezado admite hasta tres partes separadas por `|`: **Etiqueta | Tiempo (mm:ss) | Subtítulo** — tiempo y subtítulo son opcionales.
+
+  ```markdown
+  ## Apertura | 0:00 | Presentación
+  [Cámara, mirada directa]
+  Hola, soy [tu nombre] y vengo a presentarles...
+
+  ## Problema → Solución | 0:20
+  Hoy, [quién sufre el problema] enfrenta [el problema]...
+  ```
+
+  Si no ponés un tiempo, la sección arranca 20 segundos después de la anterior. El resto de las reglas de contenido (párrafo normal = se lee, `[entre corchetes]` = acotación de cámara, empieza con `*` = nota) son las mismas que en el editor.
+- Si el documento **no tiene encabezados**, se importa entero como una única sección — igual podés separarla en varias después, a mano, desde el editor.
+- Adjuntar reemplaza el guion actual, así que si querés conservar el que tenías, exportalo primero.
+
 ## Respaldar o compartir tu guion
 
-El botón **⭳ Exportar** del editor descarga tu guion como archivo JSON. El botón **⭱ Importar** carga un JSON exportado previamente (o compartido por otra persona). **Restaurar plantilla** vuelve a la plantilla de ejemplo original, por si querés empezar de cero.
+El botón **⭳ Exportar** del editor descarga tu guion como archivo JSON, con toda la estructura (tiempos, subtítulos, bloques). El mismo botón **⭱ Adjuntar guion** también acepta un JSON exportado previamente (o compartido por otra persona) y lo carga tal cual, sin volver a separarlo en secciones. **Restaurar plantilla** vuelve a la plantilla de ejemplo original, por si querés empezar de cero.
 
 Si preferís editar el guion directamente en el código en lugar de usar el editor visual, el contenido por defecto vive en el objeto `DEFAULT_DATA` dentro del `<script>` de `index.html`.
 

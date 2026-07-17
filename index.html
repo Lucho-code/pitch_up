@@ -727,8 +727,10 @@
     <div class="editor-foot">
       <button class="ctrl" data-primary="true" id="saveScriptBtn">Guardar cambios</button>
       <button class="ctrl" id="exportScriptBtn">⭳ Exportar</button>
-      <button class="ctrl" id="importScriptBtn">⭱ Importar</button>
-      <input type="file" id="importScriptInput" accept="application/json" class="sr-only" tabindex="-1">
+      <button class="ctrl" id="importScriptBtn">⭱ Adjuntar guion</button>
+      <input type="file" id="importScriptInput"
+             accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain"
+             class="sr-only" tabindex="-1">
       <button class="ctrl" id="resetTemplateBtn">Restaurar plantilla</button>
     </div>
   </div>
@@ -898,6 +900,49 @@
       if (p.charAt(0) === '*') return { type: 'note', text: p.replace(/^\*+\s*/, '') };
       return { type: 'line', text: p };
     }).filter(Boolean);
+  }
+
+  // Parses a plain .md / .txt script document into DATA-shaped sections.
+  // A line starting with #, ## or ### is treated as a new section heading;
+  // "Label | mm:ss | Subtítulo" on that heading line sets time/subtitle too
+  // (both optional). Everything before the first heading, or the whole file
+  // if there are no headings at all, becomes a single section so plain notes
+  // still import instead of being rejected.
+  function parseScriptDocument(text) {
+    text = String(text || '').replace(/\r\n/g, '\n');
+    var lines = text.split('\n');
+    var headingRe = /^#{1,3}\s+(.+?)\s*$/;
+    var sectionsOut = [];
+    var current = null;
+    var buffer = [];
+
+    function flush() {
+      var body = buffer.join('\n');
+      if (current) {
+        current.blocks = textToBlocks(body);
+        sectionsOut.push(current);
+      } else if (body.trim()) {
+        sectionsOut.push({ time: 0, label: 'Guion importado', sub: '', blocks: textToBlocks(body) });
+      }
+      buffer = [];
+    }
+
+    lines.forEach(function (line) {
+      var m = line.match(headingRe);
+      if (!m) { buffer.push(line); return; }
+      flush();
+      var parts = m[1].split('|').map(function (s) { return s.trim(); });
+      var lastTime = sectionsOut.length ? sectionsOut[sectionsOut.length - 1].time : -20;
+      current = {
+        time: parts[1] ? parseTime(parts[1]) : lastTime + 20,
+        label: parts[0] || ('Sección ' + (sectionsOut.length + 1)),
+        sub: parts[2] || '',
+        blocks: []
+      };
+    });
+    flush();
+
+    return sectionsOut;
   }
 
   // ---------- toast ----------
@@ -1335,16 +1380,28 @@
   importScriptInput.addEventListener('change', function () {
     var file = importScriptInput.files && importScriptInput.files[0];
     if (!file) return;
+    var isJsonName = /\.json$/i.test(file.name);
     var reader = new FileReader();
     reader.onload = function () {
-      try {
-        var parsed = JSON.parse(String(reader.result));
-        if (!parsed || !Array.isArray(parsed.sections)) throw new Error('formato inválido');
-        DATA = parsed;
+      var text = String(reader.result);
+      var parsedJson = null;
+      try { parsedJson = JSON.parse(text); } catch (e) { parsedJson = null; }
+
+      if (parsedJson && Array.isArray(parsedJson.sections)) {
+        DATA = parsedJson;
         renderEditor();
-        showToast('Guion importado. Revisá y guardá los cambios.');
-      } catch (e) {
-        showToast('No se pudo leer ese archivo como guion válido.');
+        showToast('Guion importado desde JSON. Revisá y guardá los cambios.');
+      } else if (isJsonName) {
+        showToast('No se pudo leer ese archivo JSON: formato inválido.');
+      } else {
+        var sections = parseScriptDocument(text);
+        if (!sections.length) {
+          showToast('El documento está vacío, no se importó nada.');
+        } else {
+          DATA = { total: DATA.total, sections: sections };
+          renderEditor();
+          showToast('Guion adjuntado: ' + sections.length + (sections.length === 1 ? ' sección' : ' secciones') + '. Revisá tiempos y guardá.');
+        }
       }
       importScriptInput.value = '';
     };
