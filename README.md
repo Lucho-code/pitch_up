@@ -52,7 +52,7 @@ python3 -m http.server 8000
 
 ## Cómo usarlo para grabar
 
-1. Presioná **✎ Editar guion** (o la tecla `E`) y reemplazá la plantilla de ejemplo por tu propio contenido: tocá **Duración total**, y en cada sección completá **Tiempo**, **Etiqueta**, **Subtítulo** y **Contenido**. Usá los botones **↑ ↓ ✕** para reordenar o borrar secciones, y **+ Agregar sección** para sumar nuevas. Guardá con **Guardar cambios**.
+1. Cargá tu guion: presioná **✎ Editar guion** (o la tecla `E`) y reemplazá la plantilla de ejemplo a mano — tocá **Duración total**, y en cada sección completá **Tiempo**, **Etiqueta**, **Subtítulo** y **Contenido**, usando **↑ ↓ ✕** para reordenar o borrar secciones y **+ Agregar sección** para sumar nuevas — o, si ya lo tenés escrito en otro lado, usá **⭱ Adjuntar guion** para subirlo como `.md`/`.txt`/`.json` de una. Guardá con **Guardar cambios**.
 2. Ubicá la pantalla con Pitch Up justo al lado de (o superpuesta a) la cámara que va a grabar.
 3. Presioná **▶ Iniciar** para arrancar el scroll automático.
 4. Ajustá la **velocidad** con el slider (o `↑` `↓` del teclado) hasta encontrar tu ritmo natural de lectura.
@@ -82,7 +82,7 @@ En el campo **Contenido** del editor, escribí un párrafo por bloque, separados
 
 ## Adjuntar un guion ya escrito (.md / .txt / .json)
 
-Si ya tenés el guion redactado en otro lado (Word, Google Docs exportado a texto, notas, etc.), no hace falta cargarlo sección por sección: guardalo como `.md` o `.txt` y subilo con **⭱ Adjuntar guion** en el editor.
+Si ya tenés el guion redactado en otro lado (Word, Google Docs exportado a texto, notas, etc.), no hace falta cargarlo sección por sección: guardalo como `.md` o `.txt` y subilo con **⭱ Adjuntar guion**, en la barra de controles principal (no hace falta abrir el editor primero — se abre solo para que revises el resultado antes de guardar).
 
 - Si el documento tiene encabezados (`#`, `##` o `###`), cada encabezado arranca una sección nueva. El texto del encabezado admite hasta tres partes separadas por `|`: **Etiqueta | Tiempo (mm:ss) | Subtítulo** — tiempo y subtítulo son opcionales.
 
@@ -101,7 +101,7 @@ Si ya tenés el guion redactado en otro lado (Word, Google Docs exportado a text
 
 ## Respaldar o compartir tu guion
 
-El botón **⭳ Exportar** del editor descarga tu guion como archivo JSON, con toda la estructura (tiempos, subtítulos, bloques). El mismo botón **⭱ Adjuntar guion** también acepta un JSON exportado previamente (o compartido por otra persona) y lo carga tal cual, sin volver a separarlo en secciones. **Restaurar plantilla** vuelve a la plantilla de ejemplo original, por si querés empezar de cero.
+El botón **⭳ Exportar** del editor descarga tu guion como archivo JSON, con toda la estructura (tiempos, subtítulos, bloques). El botón **⭱ Adjuntar guion** de la barra principal también acepta un JSON exportado previamente (o compartido por otra persona) y lo carga tal cual, sin volver a separarlo en secciones. **Restaurar plantilla**, dentro del editor, vuelve a la plantilla de ejemplo original, por si querés empezar de cero.
 
 Si preferís editar el guion directamente en el código en lugar de usar el editor visual, el contenido por defecto vive en el objeto `DEFAULT_DATA` dentro del `<script>` de `index.html`.
 

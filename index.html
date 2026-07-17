@@ -674,6 +674,10 @@
   <button class="ctrl" id="playBtn" data-primary="true">▶ Iniciar</button>
   <button class="ctrl" id="resetBtn">↺ Reiniciar</button>
   <button class="ctrl" id="editBtn">✎ Editar guion</button>
+  <button class="ctrl" id="attachBtn">⭱ Adjuntar guion</button>
+  <input type="file" id="importScriptInput"
+         accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain"
+         class="sr-only" tabindex="-1">
 
   <div class="speed-control">
     <span class="speed-control-label" id="speedControlLabel">Vel.</span>
@@ -727,10 +731,6 @@
     <div class="editor-foot">
       <button class="ctrl" data-primary="true" id="saveScriptBtn">Guardar cambios</button>
       <button class="ctrl" id="exportScriptBtn">⭳ Exportar</button>
-      <button class="ctrl" id="importScriptBtn">⭱ Adjuntar guion</button>
-      <input type="file" id="importScriptInput"
-             accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain"
-             class="sr-only" tabindex="-1">
       <button class="ctrl" id="resetTemplateBtn">Restaurar plantilla</button>
     </div>
   </div>
@@ -827,7 +827,7 @@
   var addSectionBtn = document.getElementById('addSectionBtn');
   var saveScriptBtn = document.getElementById('saveScriptBtn');
   var exportScriptBtn = document.getElementById('exportScriptBtn');
-  var importScriptBtn = document.getElementById('importScriptBtn');
+  var attachBtn = document.getElementById('attachBtn');
   var importScriptInput = document.getElementById('importScriptInput');
   var resetTemplateBtn = document.getElementById('resetTemplateBtn');
 
@@ -1376,7 +1376,7 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   });
 
-  importScriptBtn.addEventListener('click', function () { importScriptInput.click(); });
+  attachBtn.addEventListener('click', function () { importScriptInput.click(); });
   importScriptInput.addEventListener('change', function () {
     var file = importScriptInput.files && importScriptInput.files[0];
     if (!file) return;
@@ -1389,7 +1389,7 @@
 
       if (parsedJson && Array.isArray(parsedJson.sections)) {
         DATA = parsedJson;
-        renderEditor();
+        openEditor();
         showToast('Guion importado desde JSON. Revisá y guardá los cambios.');
       } else if (isJsonName) {
         showToast('No se pudo leer ese archivo JSON: formato inválido.');
@@ -1399,7 +1399,7 @@
           showToast('El documento está vacío, no se importó nada.');
         } else {
           DATA = { total: DATA.total, sections: sections };
-          renderEditor();
+          openEditor();
           showToast('Guion adjuntado: ' + sections.length + (sections.length === 1 ? ' sección' : ' secciones') + '. Revisá tiempos y guardá.');
         }
       }
