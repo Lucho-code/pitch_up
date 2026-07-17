@@ -980,12 +980,25 @@
 
   // ---------- playback ----------
 
+  // scrollTop only holds whole pixels, so at low speeds a fractional per-frame
+  // increment (e.g. 0.4px) would otherwise vanish every frame instead of building
+  // up into visible motion. The whole-pixel part still drives native scrollTop
+  // (so wheel/touch dragging and scrollHeight math keep working normally); the
+  // leftover fraction is rendered with a CSS transform, which does support
+  // sub-pixel values, so motion stays smooth at any speed instead of stepping.
+  function applyScrollPos() {
+    var whole = Math.floor(scrollPos);
+    var fracPx = scrollPos - whole;
+    scrollEl.scrollTop = whole;
+    scriptEl.style.transform = fracPx > 0.001 ? 'translateY(-' + fracPx.toFixed(2) + 'px)' : '';
+  }
+
   function jumpTo(secondsTarget) {
     elapsedMs = secondsTarget * 1000;
     var frac = DATA.total > 0 ? secondsTarget / DATA.total : 0;
     var maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
     scrollPos = Math.max(0, maxScroll * frac);
-    scrollEl.scrollTop = scrollPos;
+    applyScrollPos();
     render();
   }
 
@@ -1051,7 +1064,7 @@
     elapsedMs += dt;
     var pxPerSec = BASE_SPEED * (speedPct / 100);
     scrollPos += pxPerSec * (dt / 1000);
-    scrollEl.scrollTop = scrollPos;
+    applyScrollPos();
 
     render();
 
@@ -1076,13 +1089,14 @@
     playing = false;
     playBtn.textContent = '▶ Continuar';
     if (rafId) cancelAnimationFrame(rafId);
+    scriptEl.style.transform = '';
   }
 
   function reset() {
     pause();
     elapsedMs = 0;
     scrollPos = 0;
-    scrollEl.scrollTop = 0;
+    applyScrollPos();
     playBtn.textContent = '▶ Iniciar';
     render();
   }
@@ -1144,6 +1158,7 @@
   scrollEl.addEventListener('scroll', function () {
     if (!playing) {
       scrollPos = scrollEl.scrollTop;
+      scriptEl.style.transform = '';
       render();
     }
   });
